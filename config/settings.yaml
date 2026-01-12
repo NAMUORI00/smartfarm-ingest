@@ -5,8 +5,9 @@ llm:
   generator:
     # 질문/답변 생성용 (저비용 모델 권장)
     # OpenAI-compatible API 규격
-    base_url: "https://api.openai.com/v1"
-    model: "gemini-3-pro-preview"
+    # NOTE: base_url은 환경변수 OPENAI_BASE_URL로 오버라이드됨 (.env 참조)
+    base_url: "${OPENAI_BASE_URL}"
+    model: "gemini-2.5-flash"  # 빠른 생성용
     api_key: "${API_KEY}"
     temperature: 0.7
     max_tokens: 2048
@@ -14,8 +15,8 @@ llm:
   judge:
     # SOTA 평가용 (고성능 모델 권장)
     # OpenAI-compatible API 규격
-    base_url: "https://api.openai.com/v1"
-    model: "gpt-5"
+    base_url: "${OPENAI_BASE_URL}"
+    model: "claude-sonnet-4-5"  # 고품질 평가용
     api_key: "${API_KEY}"
     temperature: 0.0
     max_tokens: 1024
@@ -104,18 +105,18 @@ translation:
   glossary_path: ""
 
 mqm:
-  # Optional: multiple judges (e.g., GPT-5 + Gemini 3.0).
+  # Optional: multiple judges (e.g., Claude + Gemini).
   # If not provided, corpus_cli falls back to `llm.judge`.
   judges:
-    - name: "gpt5"
-      base_url: "https://api.openai.com/v1"
-      model: "gpt-5"
+    - name: "claude"
+      base_url: "${OPENAI_BASE_URL}"
+      model: "claude-sonnet-4-5"
       api_key: "${API_KEY}"
       temperature: 0.0
       max_tokens: 1200
-    - name: "gemini3"
-      base_url: "https://api.openai.com/v1"
-      model: "gemini-3-pro-preview"
+    - name: "gemini"
+      base_url: "${OPENAI_BASE_URL}"
+      model: "gemini-2.5-pro"
       api_key: "${API_KEY}"
       temperature: 0.0
       max_tokens: 1200
@@ -133,3 +134,12 @@ mqm:
   #     api_key: "${API_KEY}"
   #     temperature: 0.0
   #     max_tokens: 1200
+
+# 재현성 설정 (Reproducibility)
+reproducibility:
+  random_seed: 42  # 모든 랜덤 생성에 사용
+  deterministic: true  # 결정론적 동작 (가능한 경우)
+  log_prompts: true  # 프롬프트 로깅 (디버깅용)
+  
+  # LLM API seed 지원 (OpenAI, Anthropic 등)
+  llm_seed: 42  # API 호출 시 seed 파라미터 전달
