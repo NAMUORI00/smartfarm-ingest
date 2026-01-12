@@ -1,0 +1,14 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install --no-cache-dir openai python-dotenv jinja2
+
+# Copy scripts
+COPY scripts/generate_wasabi_qa.py /app/scripts/generate_wasabi_qa.py
+
+# Output directory will be mounted as volume
+RUN mkdir -p /app/output
+
+ENTRYPOINT ["python", "/app/scripts/generate_wasabi_qa.py"]

@@ -1,0 +1,68 @@
+# Docker Compose for parallel translation
+# Usage:
+#   docker-compose -f docker-compose.translate.yml up --build
+#   docker-compose -f docker-compose.translate.yml run merger
+#
+# Reproduciblity:
+#   - Each worker processes a shard of the data
+#   - Resume support: rerun to continue from where it stopped
+#   - Merge step combines all worker outputs
+
+services:
+  worker0:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.translate
+    environment:
+      - API_KEY=${API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ddns.namuori.net:8317/v1}
+    volumes:
+      - ./output:/app/output
+    command: ["--worker-id", "0", "--num-workers", "4", "--threads", "3"]
+    restart: "no"
+
+  worker1:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.translate
+    environment:
+      - API_KEY=${API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ddns.namuori.net:8317/v1}
+    volumes:
+      - ./output:/app/output
+    command: ["--worker-id", "1", "--num-workers", "4", "--threads", "3"]
+    restart: "no"
+
+  worker2:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.translate
+    environment:
+      - API_KEY=${API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ddns.namuori.net:8317/v1}
+    volumes:
+      - ./output:/app/output
+    command: ["--worker-id", "2", "--num-workers", "4", "--threads", "3"]
+    restart: "no"
+
+  worker3:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.translate
+    environment:
+      - API_KEY=${API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ddns.namuori.net:8317/v1}
+    volumes:
+      - ./output:/app/output
+    command: ["--worker-id", "3", "--num-workers", "4", "--threads", "3"]
+    restart: "no"
+
+  merger:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.translate
+    volumes:
+      - ./output:/app/output
+    entrypoint: ["python", "/app/scripts/merge_translations.py"]
+    profiles:
+      - merge
