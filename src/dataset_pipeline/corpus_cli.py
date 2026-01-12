@@ -43,6 +43,7 @@ from .corpus_text import join_nonempty, normalize_text
 from .llm_connector import LLMConnector
 from .mt_tools import MQMJudge, MTTranslator, PostEditor, check_numbers_units
 from .sources.cgiar import iter_many
+from .sources.web_crawler import iter_wasabi_web_docs
 
 
 DEFAULT_CGIAR_DATASETS = [
@@ -361,6 +362,78 @@ def cmd_mqm_score(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_crawl_wasabi(args: argparse.Namespace) -> int:
+    """Crawl wasabi cultivation documents from curated web sources."""
+    cfg = _load_config(args.config)
+    rag_cfg = cfg.get("rag") if isinstance(cfg.get("rag"), dict) else {}
+    chunk_size = int(args.chunk_size or rag_cfg.get("chunk_size", 512))
+    chunk_overlap = int(args.chunk_overlap or rag_cfg.get("chunk_overlap", 50))
+
+    out_path = Path(args.output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    existing = load_existing_ids(out_path, id_key="id") if args.resume else set()
+    rows: List[Dict[str, Any]] = []
+    wrote = 0
+
+    for doc in iter_wasabi_web_docs(limit=args.limit, delay=args.delay):
+        text = normalize_text(doc.text)
+        if not text:
+            continue
+
+        if args.granularity == "doc":
+            rid = f"web_{doc.id}"
+            if rid in existing:
+                continue
+            rows.append(
+                {
+                    "id": rid,
+                    "text": text,
+                    "metadata": {
+                        **doc.metadata,
+                        "title": doc.title,
+                        "url": doc.url,
+                        "lang": "en",
+                    },
+                }
+            )
+            wrote += 1
+        else:
+            chunks = split_text_recursive(text, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+            for i, ch in enumerate(chunks):
+                ch = normalize_text(ch)
+                if not ch:
+                    continue
+                rid = f"web_{doc.id}#c{i}"
+                if rid in existing:
+                    continue
+                rows.append(
+                    {
+                        "id": rid,
+                        "text": ch,
+                        "metadata": {
+                            **doc.metadata,
+                            "title": doc.title,
+                            "url": doc.url,
+                            "lang": "en",
+                            "doc_id": doc.id,
+                            "chunk_idx": i,
+                        },
+                    }
+                )
+                wrote += 1
+
+        if rows and len(rows) >= args.flush_every:
+            append_jsonl(out_path, rows)
+            rows.clear()
+
+    if rows:
+        append_jsonl(out_path, rows)
+
+    print(f"[crawl-wasabi] wrote={wrote} -> {out_path}")
+    return 0
+
+
 def cmd_postedit(args: argparse.Namespace) -> int:
     cfg = _load_config(args.config)
     llm_cfg = cfg.get("llm") if isinstance(cfg.get("llm"), dict) else {}
@@ -489,6 +562,22 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--resume", action="store_true")
     s.add_argument("--flush-every", type=int, default=20)
     s.set_defaults(func=cmd_postedit)
+
+    # crawl-wasabi
+    s = sub.add_parser(
+        "crawl-wasabi",
+        help="Crawl wasabi cultivation documents from curated web sources.",
+        parents=[common],
+    )
+    s.add_argument("--output", required=True)
+    s.add_argument("--limit", type=int, default=None, help="Max documents to crawl.")
+    s.add_argument("--delay", type=float, default=1.0, help="Delay between requests (seconds).")
+    s.add_argument("--granularity", choices=["chunk", "doc"], default="chunk")
+    s.add_argument("--chunk-size", type=int, default=None)
+    s.add_argument("--chunk-overlap", type=int, default=None)
+    s.add_argument("--resume", action="store_true", help="Skip ids already present in output.")
+    s.add_argument("--flush-every", type=int, default=50)
+    s.set_defaults(func=cmd_crawl_wasabi)
 
     return p
 
