@@ -1,3 +1,6 @@
+<!-- Parent: ../AGENTS.md -->
+<!-- Generated: 2026-01-27 | Updated: 2026-01-27 -->
+
 # dataset-pipeline
 
 **LLM-as-a-Judge** dataset generation pipeline for SmartFarm QA.
