@@ -272,6 +272,39 @@ class ConfigManager:
         else:
             return config
 
+    def _get_data_root(self) -> Path:
+        """Get data root directory from environment or default."""
+        from .constants import EnvVars
+
+        env_root = os.environ.get(EnvVars.DATA_ROOT)
+        if env_root:
+            return Path(env_root).resolve()
+
+        # Check settings.yaml
+        cfg_root = self.get("paths.data_root")
+        if cfg_root:
+            return Path(cfg_root).resolve()
+
+        # Default: project_root/output
+        return self._find_project_root() / "output"
+
+    def get_data_path(self, relative_path: str) -> Path:
+        """
+        Resolve a data file path relative to DATA_ROOT.
+
+        Args:
+            relative_path: Path relative to data root (e.g., "wasabi_qa.jsonl")
+
+        Returns:
+            Absolute Path object
+        """
+        return self._get_data_root() / relative_path
+
+    @property
+    def data_root(self) -> Path:
+        """Data root directory (from DATA_ROOT env or config)."""
+        return self._get_data_root()
+
     @property
     def raw_config(self) -> Dict[str, Any]:
         """환경변수 치환 후 원본 설정 딕셔너리 반환."""

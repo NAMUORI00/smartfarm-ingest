@@ -18,12 +18,13 @@ from jinja2 import Template
 
 from .llm_connector import LLMConnector
 from .json_utils import try_parse_json
+from .constants import Defaults
 
 
 @dataclass
 class GeneratorConfig:
     """생성기 설정 데이터 클래스"""
-    num_questions: int = 100
+    num_questions: int = Defaults.NUM_QUESTIONS
     max_iterations: int = 3
     temperature: float = 0.7
     seed_questions: List[str] = None
@@ -209,7 +210,7 @@ class QuestionGenerator:
                         all_questions.append(question)
                         
                         # 진화 적용 (일부 질문만)
-                        if random.random() < 0.3:  # 30% 확률로 진화
+                        if random.random() < Defaults.EVOLUTION_PROBABILITY:  # 진화 확률
                             evolved = self.evolve_question(question)
                             question = evolved["evolved_question"]
                         

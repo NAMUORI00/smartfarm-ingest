@@ -2,9 +2,10 @@
 """Merge translated shards from parallel workers."""
 
 import json
+import os
 from pathlib import Path
 
-OUTPUT_DIR = Path("/app/output")
+OUTPUT_DIR = Path(os.environ.get("DATA_ROOT", "/app/output"))
 FINAL_OUTPUT = OUTPUT_DIR / "wasabi_en_ko_parallel.jsonl"
 
 

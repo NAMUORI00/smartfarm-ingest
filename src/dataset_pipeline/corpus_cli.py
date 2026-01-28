@@ -38,6 +38,7 @@ from typing import Any, Dict, Iterable, List, Optional
 import yaml
 
 from .chunking_utils import split_text_recursive
+from .constants import CorpusFields, MetadataFields
 from .corpus_io import append_jsonl, load_existing_ids, read_jsonl
 from .corpus_text import join_nonempty, normalize_text
 from .llm_connector import LLMConnector
@@ -150,9 +151,9 @@ def cmd_export_cgiar(args: argparse.Namespace) -> int:
                 continue
             rows.append(
                 {
-                    "id": rid,
-                    "text": text,
-                    "metadata": {**(d.metadata or {}), "lang": "en"},
+                    CorpusFields.ID: rid,
+                    CorpusFields.TEXT: text,
+                    CorpusFields.METADATA: {**(d.metadata or {}), "lang": "en"},
                 }
             )
             wrote += 1
@@ -167,9 +168,9 @@ def cmd_export_cgiar(args: argparse.Namespace) -> int:
                     continue
                 rows.append(
                     {
-                        "id": rid,
-                        "text": ch,
-                        "metadata": {
+                        CorpusFields.ID: rid,
+                        CorpusFields.TEXT: ch,
+                        CorpusFields.METADATA: {
                             **(d.metadata or {}),
                             "lang": "en",
                             "doc_id": d.id,
@@ -209,9 +210,9 @@ def cmd_translate(args: argparse.Namespace) -> int:
     batch: List[Dict[str, Any]] = []
     wrote = 0
     for row in read_jsonl(in_path):
-        rid = row.get("id")
-        text = row.get("text")
-        meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        rid = row.get(CorpusFields.ID)
+        text = row.get(CorpusFields.TEXT)
+        meta = row.get(CorpusFields.METADATA) if isinstance(row.get(CorpusFields.METADATA), dict) else {}
         if not isinstance(rid, str) or not rid:
             continue
         if rid in existing:
@@ -231,10 +232,10 @@ def cmd_translate(args: argparse.Namespace) -> int:
 
         nu = check_numbers_units(text, ko)
         out = {
-            "id": rid,
-            "text_en": text,
-            "text_ko": ko,
-            "metadata": meta,
+            CorpusFields.ID: rid,
+            CorpusFields.TEXT_EN: text,
+            CorpusFields.TEXT_KO: ko,
+            CorpusFields.METADATA: meta,
             "translation": {
                 "backend": "api_llm",
                 "src_lang": args.src_lang,
@@ -307,14 +308,14 @@ def cmd_mqm_score(args: argparse.Namespace) -> int:
     wrote = 0
 
     for row in read_jsonl(in_path):
-        rid = row.get("id")
+        rid = row.get(CorpusFields.ID)
         if not isinstance(rid, str) or not rid:
             continue
         if rid in existing:
             continue
 
-        src = row.get("text_en")
-        tgt = row.get("text_ko")
+        src = row.get(CorpusFields.TEXT_EN)
+        tgt = row.get(CorpusFields.TEXT_KO)
         if not isinstance(src, str) or not isinstance(tgt, str):
             continue
 
@@ -387,9 +388,9 @@ def cmd_crawl_wasabi(args: argparse.Namespace) -> int:
                 continue
             rows.append(
                 {
-                    "id": rid,
-                    "text": text,
-                    "metadata": {
+                    CorpusFields.ID: rid,
+                    CorpusFields.TEXT: text,
+                    CorpusFields.METADATA: {
                         **doc.metadata,
                         "title": doc.title,
                         "url": doc.url,
@@ -409,9 +410,9 @@ def cmd_crawl_wasabi(args: argparse.Namespace) -> int:
                     continue
                 rows.append(
                     {
-                        "id": rid,
-                        "text": ch,
-                        "metadata": {
+                        CorpusFields.ID: rid,
+                        CorpusFields.TEXT: ch,
+                        CorpusFields.METADATA: {
                             **doc.metadata,
                             "title": doc.title,
                             "url": doc.url,
@@ -448,14 +449,14 @@ def cmd_postedit(args: argparse.Namespace) -> int:
     batch: List[Dict[str, Any]] = []
     wrote = 0
     for row in read_jsonl(in_path):
-        rid = row.get("id")
+        rid = row.get(CorpusFields.ID)
         if not isinstance(rid, str) or not rid:
             continue
         if rid in existing:
             continue
 
-        src = row.get("text_en")
-        tgt = row.get("text_ko")
+        src = row.get(CorpusFields.TEXT_EN)
+        tgt = row.get(CorpusFields.TEXT_KO)
         if not isinstance(src, str) or not isinstance(tgt, str):
             continue
 

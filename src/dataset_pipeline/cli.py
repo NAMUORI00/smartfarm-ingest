@@ -35,6 +35,7 @@ from typing import Optional
 import click
 
 from .config import ConfigManager, get_config
+from .constants import QAFields, CorpusFields
 
 
 # 프로젝트 루트 기준 기본 경로
@@ -303,8 +304,8 @@ def generate_qa(
         with open(output_path, "r", encoding="utf-8") as f:
             for line in f:
                 row = json.loads(line)
-                existing_questions.append(row["question"])
-                existing_ids.add(row["id"])
+                existing_questions.append(row[QAFields.QUESTION])
+                existing_ids.add(row[QAFields.ID])
         click.echo(f"기존 QA에서 이어서 진행: {len(existing_ids)}개")
     
     # 질문 카테고리 및 난이도
@@ -378,10 +379,10 @@ JSON 배열로 출력:
     if multi_source:
         text_to_ids = {}
         for doc in corpus:
-            text_ko = doc.get("text_ko") or doc.get("text", "")
+            text_ko = doc.get(CorpusFields.TEXT_KO) or doc.get(CorpusFields.TEXT, "")
             key = normalize_text(text_ko)
             if key:
-                text_to_ids.setdefault(key, []).append(doc.get("id", "unknown"))
+                text_to_ids.setdefault(key, []).append(doc.get(CorpusFields.ID, "unknown"))
 
     qa_pairs = []
     qa_id = len(existing_ids)
@@ -393,12 +394,12 @@ JSON 배열로 출력:
         for doc in corpus:
             if len(qa_pairs) + len(existing_ids) >= num_questions:
                 break
-            
-            text_ko = doc.get("text_ko") or doc.get("text", "")
+
+            text_ko = doc.get(CorpusFields.TEXT_KO) or doc.get(CorpusFields.TEXT, "")
             if len(text_ko) < 100:
                 continue
-            
-            doc_id = doc.get("id", "unknown")
+
+            doc_id = doc.get(CorpusFields.ID, "unknown")
             category = random.choice(categories)
             complexity_key = random.choice(list(complexities.keys()))
             
@@ -498,13 +499,13 @@ JSON 배열로 출력:
                         source_ids = sorted(set(text_to_ids[key]))
 
                 qa_pair = {
-                    "id": f"wasabi_qa_{qa_id:04d}",
-                    "question": question,
-                    "answer": answer,
-                    "context": text_ko[:1000],
-                    "category": category,
-                    "complexity": complexity_key,
-                    "source_ids": source_ids,
+                    QAFields.ID: f"wasabi_qa_{qa_id:04d}",
+                    QAFields.QUESTION: question,
+                    QAFields.ANSWER: answer,
+                    QAFields.CONTEXT: text_ko[:1000],
+                    QAFields.CATEGORY: category,
+                    QAFields.COMPLEXITY: complexity_key,
+                    QAFields.SOURCE_IDS: source_ids,
                     "metadata": {
                         "answer_hint": q_data.get("answer_hint", ""),
                         "model": actual_model,
@@ -746,9 +747,9 @@ def ragas_compare(
     baseline_items = load_qa_jsonl(Path(baseline))
     improved_items = load_qa_jsonl(Path(improved))
 
-    baseline_map = {item.get("id"): item for item in baseline_items}
-    improved_map = {item.get("id"): item for item in improved_items}
-    common_ids = [item.get("id") for item in baseline_items if item.get("id") in improved_map]
+    baseline_map = {item.get(QAFields.ID): item for item in baseline_items}
+    improved_map = {item.get(QAFields.ID): item for item in improved_items}
+    common_ids = [item.get(QAFields.ID) for item in baseline_items if item.get(QAFields.ID) in improved_map]
     if limit:
         common_ids = common_ids[:limit]
 

@@ -22,11 +22,23 @@ load_dotenv()
 
 from openai import OpenAI
 
-INPUT_FILE = Path("/app/output/wasabi_web_en.jsonl")
-OUTPUT_DIR = Path("/app/output")
-BATCH_SIZE = 10
-SLEEP_BETWEEN = 0.3
-MAX_RETRIES = 3
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from dataset_pipeline.constants import Defaults, EnvVars
+
+
+def _get_data_root() -> Path:
+    """Get data root from environment, defaults to /app/output for Docker."""
+    root = os.environ.get(EnvVars.DATA_ROOT, "/app/output")
+    return Path(root)
+
+
+DATA_ROOT = _get_data_root()
+INPUT_FILE = DATA_ROOT / os.environ.get(EnvVars.INPUT_FILE, "wasabi_web_en.jsonl")
+OUTPUT_DIR = DATA_ROOT
+BATCH_SIZE = int(os.environ.get(EnvVars.BATCH_SIZE, str(Defaults.BATCH_SIZE)))
+SLEEP_BETWEEN = float(os.environ.get(EnvVars.SLEEP_BETWEEN, str(Defaults.SLEEP_BETWEEN_REQUESTS)))
+MAX_RETRIES = int(os.environ.get(EnvVars.MAX_RETRIES, str(Defaults.MAX_RETRIES)))
 
 
 def load_existing_ids(path: Path) -> set:
