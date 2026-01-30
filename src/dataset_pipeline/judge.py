@@ -7,16 +7,19 @@ Prometheus (Kim et al., 2024) 방법론 기반:
 - 피드백 기반 개선
 """
 
+from __future__ import annotations
+
 import json
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from jinja2 import Template
 
 from .llm_connector import LLMConnector
 from .json_utils import try_parse_json
 
+_PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 
 @dataclass
 class JudgeConfig:
@@ -64,15 +67,13 @@ class LLMJudge:
     
     def _load_judge_prompt(self) -> str:
         """평가 프롬프트 로드"""
-        prompt_file = Path(__file__).parent.parent / "prompts" / "judge.jinja"
-        with open(prompt_file, 'r', encoding='utf-8') as f:
-            return f.read()
+        prompt_file = _PROMPTS_DIR / "judge.jinja"
+        return prompt_file.read_text(encoding="utf-8")
     
     def _load_feedback_prompt(self) -> str:
         """피드백 프롬프트 로드"""
-        prompt_file = Path(__file__).parent.parent / "prompts" / "refine.jinja"
-        with open(prompt_file, 'r', encoding='utf-8') as f:
-            return f.read()
+        prompt_file = _PROMPTS_DIR / "refine.jinja"
+        return prompt_file.read_text(encoding="utf-8")
     
     def evaluate_qa_pair(self, question: str, answer: str, context: str = "") -> Dict[str, Any]:
         """

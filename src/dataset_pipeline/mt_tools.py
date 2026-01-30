@@ -12,7 +12,7 @@ from .llm_connector import LLMConnector
 from .corpus_text import extract_numbers_and_units
 
 
-_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
+_PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 
 
 def _load_prompt(name: str) -> str:

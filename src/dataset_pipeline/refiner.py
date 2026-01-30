@@ -7,9 +7,11 @@ RAFT (Zhang et al., 2024) 방법론 기반:
 - 품질 검증
 """
 
-from typing import List, Dict, Any, Optional
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from jinja2 import Template
 
@@ -17,6 +19,7 @@ from .llm_connector import LLMConnector
 from .rag_connector import RAGConnector
 from .json_utils import try_parse_json
 
+_PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 
 @dataclass
 class RefinerConfig:
@@ -58,15 +61,13 @@ class AnswerRefiner:
     
     def _load_answer_prompt(self) -> str:
         """답변 생성 프롬프트 로드"""
-        prompt_file = Path(__file__).parent.parent / "prompts" / "answer.jinja"
-        with open(prompt_file, 'r', encoding='utf-8') as f:
-            return f.read()
+        prompt_file = _PROMPTS_DIR / "answer.jinja"
+        return prompt_file.read_text(encoding="utf-8")
     
     def _load_refine_prompt(self) -> str:
         """답변 정제 프롬프트 로드"""
-        prompt_file = Path(__file__).parent.parent / "prompts" / "refine.jinja"
-        with open(prompt_file, 'r', encoding='utf-8') as f:
-            return f.read()
+        prompt_file = _PROMPTS_DIR / "refine.jinja"
+        return prompt_file.read_text(encoding="utf-8")
     
     def generate_answer(self, question: str, context: str = "") -> Dict[str, Any]:
         """

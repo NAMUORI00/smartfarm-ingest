@@ -12,6 +12,7 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import random
 import sys
 import tempfile
@@ -23,7 +24,6 @@ import yaml
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from dataset_pipeline.llm_connector import LLMConnector
 from dataset_pipeline.rag_connector import RAGConnector
 from dataset_pipeline.refiner import AnswerRefiner
 
@@ -43,11 +43,30 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parent.parent
     cfg = yaml.safe_load((repo_root / "config" / "settings.yaml").read_text(encoding="utf-8"))
 
-    llm = LLMConnector(cfg["llm"])
     rag = RAGConnector(cfg["rag"])
 
     token = f"ragfact_{uuid.uuid4().hex[:10]}"
     value = f"{random.random() * 1000:.6f}"
+
+    class DummyLLM:
+        """Deterministic stub LLM for grounding tests (no external API)."""
+
+        def __init__(self, injected_value: str):
+            self.injected_value = injected_value
+
+        def generate(self, prompt: str, *args, **kwargs) -> str:
+            if self.injected_value in prompt:
+                answer = self.injected_value
+                confidence = 1.0
+            else:
+                answer = "UNKNOWN"
+                confidence = 0.0
+            return json.dumps(
+                {"answer": answer, "confidence": confidence, "sources": []},
+                ensure_ascii=False,
+            )
+
+    llm = DummyLLM(value)
 
     test_doc = Path(tempfile.gettempdir()) / f"rag_grounding_{token}.txt"
     test_doc.write_text(

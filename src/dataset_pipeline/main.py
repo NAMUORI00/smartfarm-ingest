@@ -9,11 +9,13 @@ RAFT (Zhang et al., 2024) 워크플로우 구현:
 5. 반복적 정제 및 필터링
 """
 
-import os
+from __future__ import annotations
+
 import json
-import yaml
-from typing import Dict, Any, List
 from pathlib import Path
+from typing import Any, Dict, List
+
+import yaml
 
 from .llm_connector import LLMConnector
 from .rag_connector import RAGConnector
@@ -39,9 +41,20 @@ class DatasetPipeline:
     
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """설정 파일 로드"""
-        config_file = Path(__file__).parent.parent / config_path
-        with open(config_file, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
+        config_file = Path(config_path)
+        candidates: List[Path] = [config_file] if config_file.is_absolute() else [
+            Path.cwd() / config_file,
+            Path(__file__).resolve().parents[2] / config_file,
+        ]
+
+        for candidate in candidates:
+            if candidate.exists():
+                with open(candidate, "r", encoding="utf-8") as f:
+                    return yaml.safe_load(f)
+
+        raise FileNotFoundError(
+            f"Config file not found: {config_path}. Tried: {', '.join(str(p) for p in candidates)}"
+        )
     
     def _setup_components(self):
         """파이프라인 컴포넌트 초기화"""
@@ -139,9 +152,12 @@ class DatasetPipeline:
     
     def _save_dataset(self, qa_pairs: List[Dict[str, Any]], output_path: str):
         """데이터셋 저장 (JSONL 형식)"""
-        output_file = Path(__file__).parent.parent / output_path
+        output_file = Path(output_path)
+        if not output_file.is_absolute():
+            output_file = Path.cwd() / output_file
+        output_file.parent.mkdir(parents=True, exist_ok=True)
         
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             for pair in qa_pairs:
                 json_line = {
                     "question": pair["question"],
@@ -182,10 +198,19 @@ class DatasetPipeline:
     
     def _load_dataset(self, dataset_path: str) -> List[Dict[str, Any]]:
         """데이터셋 로드"""
-        dataset_file = Path(__file__).parent.parent / dataset_path
+        dataset_file = Path(dataset_path)
+        candidates: List[Path] = [dataset_file] if dataset_file.is_absolute() else [
+            Path.cwd() / dataset_file,
+            Path(__file__).resolve().parents[2] / dataset_file,
+        ]
+        resolved = next((p for p in candidates if p.exists()), None)
+        if resolved is None:
+            raise FileNotFoundError(
+                f"Dataset file not found: {dataset_path}. Tried: {', '.join(str(p) for p in candidates)}"
+            )
         qa_pairs = []
         
-        with open(dataset_file, 'r', encoding='utf-8') as f:
+        with open(resolved, "r", encoding="utf-8") as f:
             for line in f:
                 if line.strip():
                     qa_pairs.append(json.loads(line.strip()))
@@ -194,7 +219,10 @@ class DatasetPipeline:
     
     def _save_evaluation_results(self, evaluated_pairs: List[Dict[str, Any]], output_path: str):
         """평가 결과 저장"""
-        output_file = Path(__file__).parent.parent / output_path
+        output_file = Path(output_path)
+        if not output_file.is_absolute():
+            output_file = Path.cwd() / output_file
+        output_file.parent.mkdir(parents=True, exist_ok=True)
         
         results = {
             "total_pairs": len(evaluated_pairs),
@@ -203,7 +231,7 @@ class DatasetPipeline:
             "details": evaluated_pairs,
         }
         
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
 
 

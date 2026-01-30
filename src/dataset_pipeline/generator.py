@@ -7,18 +7,22 @@ Self-Instruct (Wang et al., 2022) 및 Evol-Instruct (Xu et al., 2023) 방법론 
 - 도메인 특화 질문 생성
 """
 
+from __future__ import annotations
+
 import json
 import random
 import re
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from jinja2 import Template
 
-from .llm_connector import LLMConnector
-from .json_utils import try_parse_json
 from .constants import Defaults
+from .json_utils import try_parse_json
+from .llm_connector import LLMConnector
+
+_PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 
 
 @dataclass
@@ -68,15 +72,13 @@ class QuestionGenerator:
     
     def _load_generation_prompt(self) -> str:
         """질문 생성 프롬프트 로드"""
-        prompt_file = Path(__file__).parent.parent / "prompts" / "generation.jinja"
-        with open(prompt_file, 'r', encoding='utf-8') as f:
-            return f.read()
+        prompt_file = _PROMPTS_DIR / "generation.jinja"
+        return prompt_file.read_text(encoding="utf-8")
     
     def _load_evolution_prompt(self) -> str:
         """질문 진화 프롬프트 로드"""
-        prompt_file = Path(__file__).parent.parent / "prompts" / "evolution.jinja"
-        with open(prompt_file, 'r', encoding='utf-8') as f:
-            return f.read()
+        prompt_file = _PROMPTS_DIR / "evolution.jinja"
+        return prompt_file.read_text(encoding="utf-8")
     
     def generate_from_context(self, context: str, existing_questions: List[str] = None) -> List[Dict[str, Any]]:
         """
