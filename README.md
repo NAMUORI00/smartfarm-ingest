@@ -37,6 +37,21 @@
 
 ## 빠른 시작
 
+### v2 Public Artifact Build (Docling + Kimi + Qdrant/FalkorDB)
+
+```bash
+cd smartfarm-ingest
+python -m pipeline.public_ingest_runner \
+  --input-dir ./data/public_docs \
+  --qdrant-host localhost --qdrant-port 6333 \
+  --falkor-host localhost --falkor-port 6379
+```
+
+설명:
+- Docling 사용 가능 시 멀티모달 파싱 우선
+- Kimi 추출 결과는 스키마 검증 후 반영
+- 결과는 Qdrant(벡터) + FalkorDB(KG)에 public tier로 적재
+
 ### 1. 설치
 
 ```bash
