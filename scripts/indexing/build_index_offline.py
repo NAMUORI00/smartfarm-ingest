@@ -181,7 +181,7 @@ def main() -> None:
     print(f"  Saved: {dense_docs_path}")
     print(f"  Saved: {sparse_path}")
 
-    # 5. Build graph (optional, for PathRAG)
+    # 5. Build TriGraph (optional)
     print("\n[Bonus] Building causal graph...")
     start = time.perf_counter()
     graph = build_graph_from_docs(docs)
