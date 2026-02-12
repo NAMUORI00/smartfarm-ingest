@@ -52,6 +52,23 @@ python -m pipeline.public_ingest_runner \
 - Kimi 추출 결과는 스키마 검증 후 반영
 - 결과는 Qdrant(벡터) + FalkorDB(KG)에 public tier로 적재
 
+### v2 Reproducibility Check (Offline Ingest Manifest)
+
+```bash
+cd smartfarm-ingest
+python -m pipeline.reproducibility_check \
+  --input-dir ./data/public_docs \
+  --out ../output/repro/public_ingest_manifest.json
+```
+
+비교 검증:
+
+```bash
+python -m pipeline.reproducibility_check \
+  --input-dir ./data/public_docs \
+  --compare-manifest ../output/repro/public_ingest_manifest.json
+```
+
 ### 1. 설치
 
 ```bash
