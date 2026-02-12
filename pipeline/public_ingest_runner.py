@@ -17,11 +17,22 @@ def iter_input_files(root: Path) -> Iterable[Path]:
                 yield p
 
 
-def run_public_ingest(*, input_dir: Path, qdrant_host: str, qdrant_port: int, falkor_host: str, falkor_port: int) -> int:
-    parser = DoclingParser()
-    extractor = KimiExtractor()
-    vectors = VectorWriter(host=qdrant_host, port=qdrant_port)
-    kg = KGWriter(host=falkor_host, port=falkor_port)
+def run_public_ingest(
+    *,
+    input_dir: Path,
+    qdrant_host: str,
+    qdrant_port: int,
+    falkor_host: str,
+    falkor_port: int,
+    parser: DoclingParser | None = None,
+    extractor: KimiExtractor | None = None,
+    vectors: VectorWriter | None = None,
+    kg: KGWriter | None = None,
+) -> int:
+    parser = parser or DoclingParser()
+    extractor = extractor or KimiExtractor()
+    vectors = vectors or VectorWriter(host=qdrant_host, port=qdrant_port)
+    kg = kg or KGWriter(host=falkor_host, port=falkor_port)
 
     total_chunks = 0
     total_entities = 0
@@ -38,14 +49,14 @@ def run_public_ingest(*, input_dir: Path, qdrant_host: str, qdrant_port: int, fa
                 "created_at": ch.metadata.get("created_at", ""),
             }
             vectors.upsert_chunk(chunk_id=ch.chunk_id, text=ch.text, payload=payload)
-            kg.write_chunk(chunk_id=ch.chunk_id, text=ch.text, metadata=payload, tier="public")
+            kg.write_chunk(chunk_id=ch.chunk_id, text=ch.text, metadata=payload, tier="public", farm_id="")
 
             extracted = extractor.extract(ch.text)
             entities = extracted.get("entities") or []
             relations = extracted.get("relations") or []
 
             # Persist relations in KG. Entities are implicitly created by relation MERGE.
-            kg.write_relations(relations, tier="public")
+            kg.write_relations(relations, tier="public", farm_id="")
 
             total_chunks += 1
             total_entities += len(entities)
