@@ -7,7 +7,7 @@ from typing import Iterable
 
 from pipeline.docling_parser import DoclingParser
 from pipeline.kg_writer import KGWriter
-from pipeline.kimi_extractor import KimiExtractor
+from pipeline.kimi_extractor import ExtractionInput, KimiExtractor
 from pipeline.vector_writer import VectorWriter
 
 
@@ -61,7 +61,17 @@ def run_public_ingest(
             vectors.upsert_chunk(chunk_id=ch.chunk_id, text=ch.text, payload=payload)
             kg.write_chunk(chunk_id=ch.chunk_id, text=ch.text, metadata=payload, tier="public", farm_id="")
 
-            extracted = extractor.extract(ch.text)
+            extracted = extractor.extract(
+                ExtractionInput(
+                    text=ch.text,
+                    modality=str(ch.metadata.get("modality") or "text"),
+                    table_html_ref=(str(ch.metadata.get("table_html_ref")) if ch.metadata.get("table_html_ref") else None),
+                    image_b64_ref=(str(ch.metadata.get("image_b64_ref")) if ch.metadata.get("image_b64_ref") else None),
+                    formula_latex_ref=(str(ch.metadata.get("formula_latex_ref")) if ch.metadata.get("formula_latex_ref") else None),
+                    asset_ref=(str(ch.metadata.get("asset_ref")) if ch.metadata.get("asset_ref") else None),
+                    source_doc=str(file_path.name),
+                )
+            )
             entities = extracted.get("entities") or []
             relations = extracted.get("relations") or []
 
