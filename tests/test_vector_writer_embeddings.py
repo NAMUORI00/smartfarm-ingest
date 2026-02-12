@@ -24,47 +24,67 @@ def test_vector_writer_upsert_uses_named_vectors(monkeypatch) -> None:  # type: 
         def embed_texts(self, req):
             return [[0.01] * 512 for _ in req.texts]
 
+    class _FakeModels:
+        class Distance:
+            COSINE = "Cosine"
+
+        class Modifier:
+            IDF = "idf"
+
+        class VectorParams:
+            def __init__(self, *, size, distance):
+                self.size = size
+                self.distance = distance
+
+        class SparseVectorParams:
+            def __init__(self, *, modifier=None):
+                self.modifier = modifier
+
+        class SparseVector:
+            def __init__(self, *, indices, values):
+                self.indices = indices
+                self.values = values
+
+        class PointStruct:
+            def __init__(self, *, id, vector, payload):
+                self.id = id
+                self.vector = vector
+                self.payload = payload
+
     calls = []
 
-    class _Resp:
-        def __init__(self, status_code=200):
-            self.status_code = status_code
-
-    class _Client:
-        def __init__(self, timeout=None):  # noqa: ARG002
+    class _FakeClient:
+        def __init__(self, url=None, timeout=None):  # noqa: ARG002
             pass
 
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):  # noqa: ANN001, ARG002
+        def collection_exists(self, _collection):
+            calls.append(("collection_exists", _collection))
             return False
 
-        def get(self, url):
-            calls.append(("get", url, None))
-            return _Resp(status_code=404)
+        def create_collection(self, **kwargs):
+            calls.append(("create_collection", kwargs))
+            return True
 
-        def put(self, url, json=None):
-            calls.append(("put", url, json))
-            return _Resp(status_code=200)
-
-    class _Httpx:
-        Client = _Client
+        def upsert(self, *, collection_name, points, wait=True):
+            calls.append(("upsert", collection_name, points, wait))
+            return True
 
     monkeypatch.setattr("pipeline.vector_writer.build_embedding_provider", lambda: _FakeEmbedder())
-    monkeypatch.setattr(vector_writer_module, "httpx", _Httpx())
+    monkeypatch.setattr(vector_writer_module, "QdrantClient", _FakeClient)
+    monkeypatch.setattr(vector_writer_module, "models", _FakeModels)
 
     w = VectorWriter()
-    w.upsert_chunk(
+    ok = w.upsert_chunk(
         chunk_id="chunk-1",
         text="image caption text",
         payload={"tier": "public", "source_type": "document", "modality": "image", "asset_ref": "img://1"},
     )
 
-    upserts = [c for c in calls if c[0] == "put" and "/points" in c[1]]
+    assert ok is True
+    upserts = [c for c in calls if c[0] == "upsert"]
     assert upserts
-    body = upserts[-1][2]
-    vectors = body["points"][0]["vector"]
+    point = upserts[-1][2][0]
+    vectors = point.vector
     assert "dense_text" in vectors
     assert "dense_image" in vectors
     assert "sparse" in vectors

@@ -23,9 +23,10 @@ def test_kg_writer_private_relation_merge_includes_farm_id(monkeypatch) -> None:
     monkeypatch.setattr(writer, "_run", lambda q: queries.append(q))
 
     writer.write_relations(
-        [{"source": "e1", "target": "e2", "type": "CAUSES"}],
+        [{"source": "e1", "target": "e2", "type": "CAUSES", "confidence": 0.9, "evidence": "x"}],
         tier="private",
         farm_id="farm-a",
+        created_at="2026-02-12T00:00:00+00:00",
     )
 
     assert queries
@@ -34,6 +35,7 @@ def test_kg_writer_private_relation_merge_includes_farm_id(monkeypatch) -> None:
     assert "canonical_id:'e2'" in q
     assert "tier:'private'" in q
     assert "farm_id:'farm-a'" in q
+    assert "r.confidence" in q
 
 
 def test_run_public_ingest_smoke_with_injected_components(tmp_path: Path) -> None:
@@ -46,15 +48,28 @@ def test_run_public_ingest_smoke_with_injected_components(tmp_path: Path) -> Non
                 ParsedChunk(
                     chunk_id="doc#c0",
                     text="tomato humidity control",
-                    metadata={"modality": "text", "created_at": "2026-02-12T00:00:00+00:00"},
+                    metadata={
+                        "modality": "table",
+                        "asset_ref": "page:1#tbl:0",
+                        "table_html_ref": "<table><tr><td>x</td></tr></table>",
+                        "created_at": "2026-02-12T00:00:00+00:00",
+                    },
                 )
             ]
 
     class _Extractor:
         def extract(self, _text):
             return {
-                "entities": [{"canonical_id": "tomato", "type": "crop"}],
-                "relations": [{"source": "tomato", "target": "humidity", "type": "RELATED"}],
+                "entities": [{"canonical_id": "tomato", "type": "Crop", "confidence": 0.9}],
+                "relations": [
+                    {
+                        "source": "tomato",
+                        "target": "humidity",
+                        "type": "AFFECTS",
+                        "confidence": 0.8,
+                        "evidence": "table",
+                    }
+                ],
             }
 
     class _Vectors:
@@ -68,13 +83,32 @@ def test_run_public_ingest_smoke_with_injected_components(tmp_path: Path) -> Non
     class _KG:
         def __init__(self):
             self.chunk_calls = []
+            self.entity_calls = []
             self.relation_calls = []
 
         def write_chunk(self, **kwargs):
             self.chunk_calls.append(kwargs)
 
-        def write_relations(self, relations, tier="public", farm_id=""):
-            self.relation_calls.append({"relations": list(relations), "tier": tier, "farm_id": farm_id})
+        def write_entities(self, entities, *, tier="public", farm_id="", created_at="", chunk_id=""):
+            self.entity_calls.append(
+                {
+                    "entities": list(entities),
+                    "tier": tier,
+                    "farm_id": farm_id,
+                    "created_at": created_at,
+                    "chunk_id": chunk_id,
+                }
+            )
+
+        def write_relations(self, relations, *, tier="public", farm_id="", created_at=""):
+            self.relation_calls.append(
+                {
+                    "relations": list(relations),
+                    "tier": tier,
+                    "farm_id": farm_id,
+                    "created_at": created_at,
+                }
+            )
 
     vectors = _Vectors()
     kg = _KG()
@@ -93,7 +127,9 @@ def test_run_public_ingest_smoke_with_injected_components(tmp_path: Path) -> Non
 
     assert rc == 0
     assert len(vectors.calls) == 1
+    assert vectors.calls[0][2]["table_html_ref"]
     assert len(kg.chunk_calls) == 1
+    assert len(kg.entity_calls) == 1
     assert len(kg.relation_calls) == 1
+    assert kg.entity_calls[0]["chunk_id"] == "doc#c0"
     assert kg.relation_calls[0]["tier"] == "public"
-

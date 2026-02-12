@@ -21,6 +21,7 @@ import sqlite3
 import tarfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Protocol, Sequence, Tuple
 
@@ -56,6 +57,69 @@ Your task is to **add missing entities/relations** that are not already included
 {document_text}
 
 ## ADDITIONAL EXTRACTION (JSON only):"""
+
+
+_FALLBACK_EXTRACTION_PROMPT = """Extract agricultural entities and causal relations from the document.
+Return JSON only with this schema:
+{{
+  "entities": [{{"text": "...", "type": "...", "canonical_id": "...", "confidence": 0.0}}],
+  "relations": [{{"source": "...", "target": "...", "type": "...", "confidence": 0.0, "evidence": "..."}}]
+}}
+
+Allowed entity types:
+- crop, disease, pest, environment, practice, condition, category
+- cause, symptom, action
+
+Allowed relation types:
+- causes, mitigates, related, associated_with, indicates, affects, requires
+
+Document:
+{document_text}
+"""
+
+
+class _FallbackEntityType(str, Enum):
+    CROP = "crop"
+    DISEASE = "disease"
+    PEST = "pest"
+    ENVIRONMENT = "environment"
+    PRACTICE = "practice"
+    CONDITION = "condition"
+    CATEGORY = "category"
+    CAUSE = "cause"
+    SYMPTOM = "symptom"
+    ACTION = "action"
+
+
+class _FallbackRelationType(str, Enum):
+    CAUSES = "causes"
+    MITIGATES = "mitigates"
+    RELATED = "related"
+    ASSOCIATED_WITH = "associated_with"
+    INDICATES = "indicates"
+    AFFECTS = "affects"
+    REQUIRES = "requires"
+
+
+def _load_extraction_contract() -> tuple[str, set[str], set[str]]:
+    """
+    Keep backward compatibility with legacy CausalSchema if present.
+    For rebuilt runtime, use local fallback contract so compiler is standalone.
+    """
+    try:
+        from core.Models.Schemas.CausalSchema import EXTRACTION_PROMPT, EntityType, RelationType  # type: ignore
+
+        return (
+            EXTRACTION_PROMPT,
+            {e.value for e in EntityType},
+            {r.value for r in RelationType},
+        )
+    except Exception:
+        return (
+            _FALLBACK_EXTRACTION_PROMPT,
+            {e.value for e in _FallbackEntityType},
+            {r.value for r in _FallbackRelationType},
+        )
 
 
 def _utc_now_iso() -> str:
@@ -685,10 +749,7 @@ def compile_base_kb(
     # Base compiler runs in an internet-connected environment and should remain
     # independent from on-prem runtime Settings side effects (e.g., LLMLITE_HOST guard).
     ensure_search_on_path()
-    from core.Models.Schemas.CausalSchema import EXTRACTION_PROMPT, EntityType, RelationType
-
-    allowed_entity_types = {e.value for e in EntityType}
-    allowed_relation_types = {r.value for r in RelationType}
+    extraction_prompt, allowed_entity_types, allowed_relation_types = _load_extraction_contract()
 
     input_jsonl = Path(input_jsonl)
     output_sqlite = Path(output_sqlite)
@@ -766,7 +827,7 @@ def compile_base_kb(
                 try:
                     parsed, entities, relations = _extract_entities_relations_from_chunk(
                         llm,
-                        prompt_template=EXTRACTION_PROMPT,
+                        prompt_template=extraction_prompt,
                         chunk_text=ch,
                         llm_role=llm_role,
                         system_prompt=system_prompt,

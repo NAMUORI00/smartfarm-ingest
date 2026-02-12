@@ -7,12 +7,13 @@ import re
 from collections import Counter
 from typing import Any, Dict, List
 
-try:
-    import httpx
-except Exception:  # pragma: no cover
-    httpx = None  # type: ignore[assignment]
-
 from pipeline.embeddings import EmbeddingRequest, build_embedding_provider
+
+try:
+    from qdrant_client import QdrantClient, models
+except Exception:  # pragma: no cover
+    QdrantClient = None  # type: ignore[assignment]
+    models = None  # type: ignore[assignment]
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_가-힣]+")
 
@@ -24,6 +25,9 @@ class VectorWriter:
         self.vector_size = int(os.getenv("EMBED_DIM", "512"))
         self.embedder = build_embedding_provider()
         self.embed_model = str(os.getenv("EMBED_MODEL", "Qwen/Qwen3-VL-Embedding-2B"))
+        self.client = None
+        if QdrantClient is not None:
+            self.client = QdrantClient(url=self.base, timeout=8.0)
 
     def _tokenize(self, text: str) -> List[str]:
         return [t.lower() for t in _TOKEN_RE.findall(str(text or "").lower()) if t]
@@ -55,26 +59,28 @@ class VectorWriter:
         return vec
 
     def ensure_collection(self) -> None:
-        if httpx is None:
+        if self.client is None or models is None:
             return
-        with httpx.Client(timeout=4.0) as c:
-            r = c.get(f"{self.base}/collections/{self.collection}")
-            if r.status_code == 200:
+
+        try:
+            if self.client.collection_exists(self.collection):
                 return
-            c.put(
-                f"{self.base}/collections/{self.collection}",
-                json={
-                    "vectors": {
-                        "dense_text": {"size": self.vector_size, "distance": "Cosine"},
-                        "dense_image": {"size": self.vector_size, "distance": "Cosine"},
-                    },
-                    "sparse_vectors": {"sparse": {"modifier": "idf"}},
+            self.client.create_collection(
+                collection_name=self.collection,
+                vectors_config={
+                    "dense_text": models.VectorParams(size=self.vector_size, distance=models.Distance.COSINE),
+                    "dense_image": models.VectorParams(size=self.vector_size, distance=models.Distance.COSINE),
+                },
+                sparse_vectors_config={
+                    "sparse": models.SparseVectorParams(modifier=models.Modifier.IDF),
                 },
             )
-
-    def upsert_chunk(self, *, chunk_id: str, text: str, payload: Dict[str, Any]) -> None:
-        if httpx is None:
+        except Exception:
             return
+
+    def upsert_chunk(self, *, chunk_id: str, text: str, payload: Dict[str, Any]) -> bool:
+        if self.client is None or models is None:
+            return False
         self.ensure_collection()
 
         point_payload = dict(payload or {})
@@ -84,25 +90,31 @@ class VectorWriter:
         point_payload.setdefault("embedding_model", self.embed_model)
         point_payload["modality"] = modality
         point_payload["asset_ref"] = asset_ref or None
+        point_payload.setdefault("table_html_ref", None)
+        point_payload.setdefault("image_b64_ref", None)
+        point_payload.setdefault("formula_latex_ref", None)
 
         dense_text = self._dense_vector(text)
         image_basis = f"{asset_ref}\n{text}".strip() if modality == "image" and asset_ref else text
         dense_image = self._dense_vector(image_basis)
 
-        with httpx.Client(timeout=6.0) as c:
-            c.put(
-                f"{self.base}/collections/{self.collection}/points",
-                json={
-                    "points": [
-                        {
-                            "id": chunk_id,
-                            "vector": {
-                                "dense_text": dense_text,
-                                "dense_image": dense_image,
-                                "sparse": self._sparse_vector(text),
-                            },
-                            "payload": point_payload,
-                        }
-                    ]
-                },
-            )
+        sparse = self._sparse_vector(text)
+        sparse_vec = models.SparseVector(
+            indices=[int(i) for i in sparse.get("indices") or []],
+            values=[float(v) for v in sparse.get("values") or []],
+        )
+
+        point = models.PointStruct(
+            id=str(chunk_id),
+            vector={
+                "dense_text": dense_text,
+                "dense_image": dense_image,
+                "sparse": sparse_vec,
+            },
+            payload=point_payload,
+        )
+        try:
+            self.client.upsert(collection_name=self.collection, points=[point], wait=True)
+            return True
+        except Exception:
+            return False

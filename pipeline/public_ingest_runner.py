@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -8,6 +9,10 @@ from pipeline.docling_parser import DoclingParser
 from pipeline.kg_writer import KGWriter
 from pipeline.kimi_extractor import KimiExtractor
 from pipeline.vector_writer import VectorWriter
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def iter_input_files(root: Path) -> Iterable[Path]:
@@ -41,13 +46,17 @@ def run_public_ingest(
     for file_path in iter_input_files(input_dir):
         chunks = parser.parse_file(file_path)
         for ch in chunks:
+            created_at = str(ch.metadata.get("created_at") or "").strip() or _utc_now_iso()
             payload = {
                 "tier": "public",
                 "source_type": "document",
                 "source_doc": str(file_path.name),
                 "modality": ch.metadata.get("modality", "text"),
                 "asset_ref": ch.metadata.get("asset_ref"),
-                "created_at": ch.metadata.get("created_at", ""),
+                "table_html_ref": ch.metadata.get("table_html_ref"),
+                "image_b64_ref": ch.metadata.get("image_b64_ref"),
+                "formula_latex_ref": ch.metadata.get("formula_latex_ref"),
+                "created_at": created_at,
             }
             vectors.upsert_chunk(chunk_id=ch.chunk_id, text=ch.text, payload=payload)
             kg.write_chunk(chunk_id=ch.chunk_id, text=ch.text, metadata=payload, tier="public", farm_id="")
@@ -56,8 +65,19 @@ def run_public_ingest(
             entities = extracted.get("entities") or []
             relations = extracted.get("relations") or []
 
-            # Persist relations in KG. Entities are implicitly created by relation MERGE.
-            kg.write_relations(relations, tier="public", farm_id="")
+            kg.write_entities(
+                entities,
+                tier="public",
+                farm_id="",
+                created_at=created_at,
+                chunk_id=ch.chunk_id,
+            )
+            kg.write_relations(
+                relations,
+                tier="public",
+                farm_id="",
+                created_at=created_at,
+            )
 
             total_chunks += 1
             total_entities += len(entities)
