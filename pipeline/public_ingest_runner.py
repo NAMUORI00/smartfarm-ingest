@@ -46,6 +46,7 @@ def run_public_ingest(
                 "source_type": "document",
                 "source_doc": str(file_path.name),
                 "modality": ch.metadata.get("modality", "text"),
+                "asset_ref": ch.metadata.get("asset_ref"),
                 "created_at": ch.metadata.get("created_at", ""),
             }
             vectors.upsert_chunk(chunk_id=ch.chunk_id, text=ch.text, payload=payload)
