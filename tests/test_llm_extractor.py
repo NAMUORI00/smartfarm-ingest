@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from pipeline import kimi_extractor as mod
-from pipeline.kimi_extractor import ExtractionInput, MultiLLMExtractor
+from pipeline import llm_extractor as mod
+from pipeline.llm_extractor import ExtractionInput, LLMExtractor
 
 
 def test_extractor_uses_featherless_env_and_modality_payload(monkeypatch) -> None:  # type: ignore[no-untyped-def]
@@ -36,7 +36,7 @@ def test_extractor_uses_featherless_env_and_modality_payload(monkeypatch) -> Non
 
     monkeypatch.setattr(mod.httpx, "post", _fake_post)
 
-    ext = MultiLLMExtractor()
+    ext = LLMExtractor()
     out = ext.extract(
         ExtractionInput(
             text="표를 보고 토마토 병충해 요인을 추출해줘",
@@ -78,7 +78,7 @@ def test_extractor_model_fallback_order(monkeypatch) -> None:  # type: ignore[no
 
     monkeypatch.setattr(mod.httpx, "post", _fake_post)
 
-    ext = MultiLLMExtractor()
+    ext = LLMExtractor()
     out = ext.extract("simple text")
     assert out == {"entities": [], "relations": []}
     assert models[:2] == ["bad/model", "good/model"]

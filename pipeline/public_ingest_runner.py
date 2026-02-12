@@ -7,7 +7,7 @@ from typing import Iterable
 
 from pipeline.docling_parser import DoclingParser
 from pipeline.kg_writer import KGWriter
-from pipeline.kimi_extractor import ExtractionInput, KimiExtractor
+from pipeline.llm_extractor import ExtractionInput, LLMExtractor
 from pipeline.vector_writer import VectorWriter
 
 
@@ -30,12 +30,12 @@ def run_public_ingest(
     falkor_host: str,
     falkor_port: int,
     parser: DoclingParser | None = None,
-    extractor: KimiExtractor | None = None,
+    extractor: LLMExtractor | None = None,
     vectors: VectorWriter | None = None,
     kg: KGWriter | None = None,
 ) -> int:
     parser = parser or DoclingParser()
-    extractor = extractor or KimiExtractor()
+    extractor = extractor or LLMExtractor()
     vectors = vectors or VectorWriter(host=qdrant_host, port=qdrant_port)
     kg = kg or KGWriter(host=falkor_host, port=falkor_port)
 
@@ -74,6 +74,29 @@ def run_public_ingest(
             )
             entities = extracted.get("entities") or []
             relations = extracted.get("relations") or []
+            entity_by_cid = {
+                str(e.get("canonical_id") or "").strip().lower(): e
+                for e in entities
+                if isinstance(e, dict)
+            }
+            relations_typed = []
+            for rel in relations:
+                if not isinstance(rel, dict):
+                    continue
+                src = str(rel.get("source") or "").strip().lower()
+                tgt = str(rel.get("target") or "").strip().lower()
+                src_entity = entity_by_cid.get(src) or {}
+                tgt_entity = entity_by_cid.get(tgt) or {}
+                r = dict(rel)
+                if src_entity.get("type"):
+                    r["source_type"] = src_entity.get("type")
+                if tgt_entity.get("type"):
+                    r["target_type"] = tgt_entity.get("type")
+                if src_entity.get("text"):
+                    r["source_text"] = src_entity.get("text")
+                if tgt_entity.get("text"):
+                    r["target_text"] = tgt_entity.get("text")
+                relations_typed.append(r)
 
             kg.write_entities(
                 entities,
@@ -83,7 +106,7 @@ def run_public_ingest(
                 chunk_id=ch.chunk_id,
             )
             kg.write_relations(
-                relations,
+                relations_typed,
                 tier="public",
                 farm_id="",
                 created_at=created_at,
@@ -91,7 +114,7 @@ def run_public_ingest(
 
             total_chunks += 1
             total_entities += len(entities)
-            total_relations += len(relations)
+            total_relations += len(relations_typed)
 
     print(
         f"[public-ingest] done chunks={total_chunks} entities={total_entities} relations={total_relations}"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from typing import Any, Dict, Iterable, Sequence
 
@@ -69,6 +70,7 @@ class KGWriter:
         escaped_source_type = self._escape(source_type)
         escaped_created_at = self._escape(created_at)
         escaped_farm = self._escape(farm_id)
+        escaped_source_doc = self._escape(str(metadata.get("source_doc") or ""))
 
         if str(tier) == "private":
             q = (
@@ -97,6 +99,50 @@ class KGWriter:
             )
         self._run(q)
 
+        if escaped_source_doc:
+            if str(tier) == "private":
+                q_doc = (
+                    "MERGE (d:Document {doc_id:'%s', tier:'%s', farm_id:'%s'}) "
+                    "SET d.source_doc='%s', d.created_at='%s', d.updated_at=datetime() "
+                    "WITH d "
+                    "MATCH (c:Chunk {chunk_id:'%s', tier:'%s', farm_id:'%s'}) "
+                    "MERGE (d)-[h:HAS_CHUNK {tier:'%s', farm_id:'%s'}]->(c) "
+                    "SET h.created_at='%s'"
+                    % (
+                        escaped_source_doc,
+                        escaped_tier,
+                        escaped_farm,
+                        escaped_source_doc,
+                        escaped_created_at,
+                        escaped_chunk_id,
+                        escaped_tier,
+                        escaped_farm,
+                        escaped_tier,
+                        escaped_farm,
+                        escaped_created_at,
+                    )
+                )
+            else:
+                q_doc = (
+                    "MERGE (d:Document {doc_id:'%s', tier:'%s'}) "
+                    "SET d.source_doc='%s', d.created_at='%s', d.updated_at=datetime() "
+                    "WITH d "
+                    "MATCH (c:Chunk {chunk_id:'%s', tier:'%s'}) "
+                    "MERGE (d)-[h:HAS_CHUNK {tier:'%s'}]->(c) "
+                    "SET h.created_at='%s'"
+                    % (
+                        escaped_source_doc,
+                        escaped_tier,
+                        escaped_source_doc,
+                        escaped_created_at,
+                        escaped_chunk_id,
+                        escaped_tier,
+                        escaped_tier,
+                        escaped_created_at,
+                    )
+                )
+            self._run(q_doc)
+
     def write_entities(
         self,
         entities: Sequence[Dict[str, Any]],
@@ -123,6 +169,18 @@ class KGWriter:
             name = self._escape(str(entity.get("text") or cid))
             confidence = float(entity.get("confidence") or 0.5)
             confidence = max(0.0, min(1.0, confidence))
+            scientific_name = self._escape(str(entity.get("scientific_name") or ""))
+            growth_stage = self._escape(str(entity.get("growth_stage") or ""))
+            metric = self._escape(str(entity.get("metric") or ""))
+            unit = self._escape(str(entity.get("unit") or ""))
+            aliases = entity.get("aliases")
+            symptom_keywords = entity.get("symptom_keywords")
+            aliases_json = self._escape(json.dumps(aliases, ensure_ascii=False)) if isinstance(aliases, list) else ""
+            symptom_json = (
+                self._escape(json.dumps(symptom_keywords, ensure_ascii=False))
+                if isinstance(symptom_keywords, list)
+                else ""
+            )
 
             head = self._merge_entity_node(canonical_id=cid, label=label, tier=tier, farm_id=farm_id)
             q = (
@@ -130,6 +188,18 @@ class KGWriter:
                 "SET e.name='%s', e.type='%s', e.confidence=%.4f, e.created_at='%s', e.updated_at=datetime()"
                 % (name, self._escape(label), confidence, ecreated)
             )
+            if scientific_name:
+                q += ", e.scientific_name='%s'" % scientific_name
+            if growth_stage:
+                q += ", e.growth_stage='%s'" % growth_stage
+            if metric:
+                q += ", e.metric='%s'" % metric
+            if unit:
+                q += ", e.unit='%s'" % unit
+            if aliases_json:
+                q += ", e.aliases_json='%s'" % aliases_json
+            if symptom_json:
+                q += ", e.symptom_keywords_json='%s'" % symptom_json
             if chunk_id:
                 if str(tier) == "private":
                     q += (
@@ -184,6 +254,11 @@ class KGWriter:
             if not src or not tgt:
                 continue
 
+            src_label = self._norm_entity_label(str(rel.get("source_type") or "Condition"))
+            tgt_label = self._norm_entity_label(str(rel.get("target_type") or "Condition"))
+            src_name = self._escape(str(rel.get("source_text") or ""))
+            tgt_name = self._escape(str(rel.get("target_text") or ""))
+
             confidence = float(rel.get("confidence") or 0.5)
             confidence = max(0.0, min(1.0, confidence))
             evidence = self._escape(str(rel.get("evidence") or ""))
@@ -192,20 +267,24 @@ class KGWriter:
             escaped_tgt = self._escape(tgt)
             if str(tier) == "private":
                 q = (
-                    "MERGE (s:Entity {canonical_id:'%s', tier:'%s', farm_id:'%s'}) "
-                    "MERGE (t:Entity {canonical_id:'%s', tier:'%s', farm_id:'%s'}) "
+                    "MERGE (s:Entity:%s {canonical_id:'%s', tier:'%s', farm_id:'%s'}) "
+                    "MERGE (t:Entity:%s {canonical_id:'%s', tier:'%s', farm_id:'%s'}) "
                     "MERGE (s)-[r:%s {tier:'%s', farm_id:'%s'}]->(t) "
-                    "SET r.confidence=%.4f, r.evidence='%s', r.created_at='%s'"
+                    "SET s.type='%s', t.type='%s', r.confidence=%.4f, r.evidence='%s', r.created_at='%s'"
                     % (
+                        src_label,
                         escaped_src,
                         escaped_tier,
                         escaped_farm,
+                        tgt_label,
                         escaped_tgt,
                         escaped_tier,
                         escaped_farm,
                         rtype,
                         escaped_tier,
                         escaped_farm,
+                        self._escape(src_label),
+                        self._escape(tgt_label),
                         confidence,
                         evidence,
                         escaped_created,
@@ -213,20 +292,28 @@ class KGWriter:
                 )
             else:
                 q = (
-                    "MERGE (s:Entity {canonical_id:'%s', tier:'%s'}) "
-                    "MERGE (t:Entity {canonical_id:'%s', tier:'%s'}) "
+                    "MERGE (s:Entity:%s {canonical_id:'%s', tier:'%s'}) "
+                    "MERGE (t:Entity:%s {canonical_id:'%s', tier:'%s'}) "
                     "MERGE (s)-[r:%s {tier:'%s'}]->(t) "
-                    "SET r.confidence=%.4f, r.evidence='%s', r.created_at='%s'"
+                    "SET s.type='%s', t.type='%s', r.confidence=%.4f, r.evidence='%s', r.created_at='%s'"
                     % (
+                        src_label,
                         escaped_src,
                         escaped_tier,
+                        tgt_label,
                         escaped_tgt,
                         escaped_tier,
                         rtype,
                         escaped_tier,
+                        self._escape(src_label),
+                        self._escape(tgt_label),
                         confidence,
                         evidence,
                         escaped_created,
                     )
                 )
+            if src_name:
+                q += ", s.name='%s'" % src_name
+            if tgt_name:
+                q += ", t.name='%s'" % tgt_name
             self._run(q)

@@ -28,43 +28,34 @@ class ExtractionInput:
     source_doc: str | None = None
 
 
-class MultiLLMExtractor:
-    """OpenAI-compatible structured extractor with multi-model fallback.
-
-    Default runtime is Featherless API, but any OpenAI-compatible endpoint works.
-    """
+class LLMExtractor:
+    """OpenAI-compatible structured extractor with multi-model fallback."""
 
     def __init__(self) -> None:
         self.base_url = (
             os.getenv("OPENAI_BASE_URL")
             or os.getenv("OPENAI_COMPAT_BASE_URL")
             or os.getenv("EXTRACTOR_BASE_URL")
-            or os.getenv("FEATHERLESS_BASE_URL")
-            or os.getenv("KIMI_API_BASE")
             or "https://api.featherless.ai/v1"
         ).rstrip("/")
         self.api_key = (
             os.getenv("OPENAI_API_KEY")
             or os.getenv("OPENAI_COMPAT_API_KEY")
             or os.getenv("EXTRACTOR_API_KEY")
-            or os.getenv("FEATHERLESS_API_KEY")
             or os.getenv("API_KEY")
-            or os.getenv("KIMI_API_KEY")
             or ""
         ).strip()
 
-        # Recommended high-quality default from Featherless model catalog.
         self.primary_model = (
             os.getenv("OPENAI_MODEL")
             or os.getenv("OPENAI_COMPAT_MODEL")
             or os.getenv("EXTRACTOR_MODEL")
-            or os.getenv("FEATHERLESS_MODEL")
-            or os.getenv("KIMI_MODEL")
             or "Qwen/Qwen2.5-32B-Instruct"
         ).strip()
         self.model_candidates = self._build_model_candidates(
-            os.getenv("EXTRACTOR_MODEL_CANDIDATES")
-            or os.getenv("FEATHERLESS_MODEL_CANDIDATES")
+            os.getenv("OPENAI_MODEL_CANDIDATES")
+            or os.getenv("OPENAI_COMPAT_MODEL_CANDIDATES")
+            or os.getenv("EXTRACTOR_MODEL_CANDIDATES")
             or ""
         )
         self.timeout = float(os.getenv("EXTRACTOR_TIMEOUT", "45") or "45")
@@ -305,5 +296,5 @@ class MultiLLMExtractor:
         return {"entities": entities, "relations": relations}
 
 
-# Backward compatible alias for existing imports.
-KimiExtractor = MultiLLMExtractor
+# Backward-compatible neutral alias.
+MultiLLMExtractor = LLMExtractor

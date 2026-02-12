@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
 from pipeline.docling_parser import DoclingParser, ParsedChunk
-from pipeline.kimi_extractor import KimiExtractor
+from pipeline.llm_extractor import LLMExtractor
 from pipeline.public_ingest_runner import iter_input_files
 
 
@@ -41,10 +41,10 @@ def build_repro_manifest(
     input_dir: Path,
     include_extractor: bool = False,
     parser: DoclingParser | None = None,
-    extractor: KimiExtractor | None = None,
+    extractor: LLMExtractor | None = None,
 ) -> Dict[str, Any]:
     parser = parser or DoclingParser()
-    extractor = extractor or KimiExtractor()
+    extractor = extractor or LLMExtractor()
 
     files = sorted(list(iter_input_files(input_dir)), key=lambda p: str(p))
     per_file: Dict[str, Dict[str, Any]] = {}
@@ -105,4 +105,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -1,6 +1,6 @@
 from .docling_parser import DoclingParser
 from .kg_writer import KGWriter
-from .kimi_extractor import ExtractionInput, KimiExtractor, MultiLLMExtractor
+from .llm_extractor import ExtractionInput, LLMExtractor, MultiLLMExtractor
 from .vector_writer import VectorWriter
 
-__all__ = ["DoclingParser", "KGWriter", "KimiExtractor", "MultiLLMExtractor", "ExtractionInput", "VectorWriter"]
+__all__ = ["DoclingParser", "KGWriter", "LLMExtractor", "MultiLLMExtractor", "ExtractionInput", "VectorWriter"]

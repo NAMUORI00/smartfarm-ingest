@@ -23,7 +23,19 @@ def test_kg_writer_private_relation_merge_includes_farm_id(monkeypatch) -> None:
     monkeypatch.setattr(writer, "_run", lambda q: queries.append(q))
 
     writer.write_relations(
-        [{"source": "e1", "target": "e2", "type": "CAUSES", "confidence": 0.9, "evidence": "x"}],
+        [
+            {
+                "source": "e1",
+                "target": "e2",
+                "type": "CAUSES",
+                "confidence": 0.9,
+                "evidence": "x",
+                "source_type": "Crop",
+                "target_type": "Environment",
+                "source_text": "tomato",
+                "target_text": "humidity",
+            }
+        ],
         tier="private",
         farm_id="farm-a",
         created_at="2026-02-12T00:00:00+00:00",
@@ -35,7 +47,35 @@ def test_kg_writer_private_relation_merge_includes_farm_id(monkeypatch) -> None:
     assert "canonical_id:'e2'" in q
     assert "tier:'private'" in q
     assert "farm_id:'farm-a'" in q
+    assert "(s:Entity:Crop" in q
+    assert "(t:Entity:Environment" in q
+    assert "s.name='tomato'" in q
+    assert "t.name='humidity'" in q
     assert "r.confidence" in q
+
+
+def test_kg_writer_chunk_creates_document_link(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    writer = KGWriter()
+    queries = []
+    monkeypatch.setattr(writer, "_run", lambda q: queries.append(q))
+
+    writer.write_chunk(
+        chunk_id="doc#c0",
+        text="smartfarm text",
+        metadata={
+            "source_type": "document",
+            "source_doc": "manual.pdf",
+            "created_at": "2026-02-12T00:00:00+00:00",
+        },
+        tier="public",
+        farm_id="",
+    )
+
+    assert len(queries) >= 2
+    doc_q = queries[1]
+    assert "MERGE (d:Document" in doc_q
+    assert "HAS_CHUNK" in doc_q
+    assert "manual.pdf" in doc_q
 
 
 def test_run_public_ingest_smoke_with_injected_components(tmp_path: Path) -> None:

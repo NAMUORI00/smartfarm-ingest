@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import base64
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
+
+_TOKEN_RE = re.compile(r"\S+")
 
 
 @dataclass
@@ -24,6 +27,8 @@ class DoclingParser:
         else:
             self.enable_vlm = str(os.getenv("DOCLING_ENABLE_VLM", "true")).lower() in {"1", "true", "yes"}
         self.vlm_model = str(os.getenv("DOCLING_VLM_MODEL", "")).strip()
+        self.chunk_token_size = max(1, int(os.getenv("DOCLING_CHUNK_TOKEN_SIZE", "1200") or "1200"))
+        self.chunk_token_overlap = max(0, int(os.getenv("DOCLING_CHUNK_TOKEN_OVERLAP", "100") or "100"))
         self._converter = self._build_docling_converter()
 
     def _build_docling_converter(self):
@@ -82,29 +87,54 @@ class DoclingParser:
         image_b64_ref: str | None = None,
     ) -> List[ParsedChunk]:
         chunks: List[ParsedChunk] = []
-        stride = 900
-        overlap = 160
-        i = 0
+        base_meta: Dict[str, Optional[str]] = {
+            "source_doc": source_doc,
+            "modality": modality,
+            "asset_ref": asset_ref,
+            "table_html_ref": table_html_ref,
+            "formula_latex_ref": formula_latex_ref,
+            "image_b64_ref": image_b64_ref,
+        }
+
+        raw = str(text or "").strip()
+        if not raw:
+            return chunks
+
+        # Non-text modalities should keep element-level chunk granularity.
+        if modality in {"table", "image", "formula"}:
+            return [
+                ParsedChunk(
+                    chunk_id=f"{doc_stem}#{modality[:1]}{chunk_index_seed}",
+                    text=raw,
+                    metadata=base_meta,
+                )
+            ]
+
+        tokens = _TOKEN_RE.findall(raw)
+        if not tokens:
+            return chunks
+
+        token_size = int(self.chunk_token_size)
+        overlap = min(int(self.chunk_token_overlap), max(0, token_size - 1))
+        step = max(1, token_size - overlap)
         idx = chunk_index_seed
-        while i < len(text):
-            seg = text[i : i + stride].strip()
+
+        for start in range(0, len(tokens), step):
+            window = tokens[start : start + token_size]
+            if not window:
+                break
+            seg = " ".join(window).strip()
             if seg:
                 chunks.append(
                     ParsedChunk(
                         chunk_id=f"{doc_stem}#{modality[:1]}{idx}",
                         text=seg,
-                        metadata={
-                            "source_doc": source_doc,
-                            "modality": modality,
-                            "asset_ref": asset_ref,
-                            "table_html_ref": table_html_ref,
-                            "formula_latex_ref": formula_latex_ref,
-                            "image_b64_ref": image_b64_ref,
-                        },
+                        metadata=base_meta,
                     )
                 )
-            i += max(1, stride - overlap)
-            idx += 1
+                idx += 1
+            if start + token_size >= len(tokens):
+                break
         return chunks
 
     def _extract_text(self, obj: Any) -> str:
@@ -274,20 +304,19 @@ class DoclingParser:
             chunks: List[ParsedChunk] = []
             seed = 0
             for seg in segments:
-                chunks.extend(
-                    self._chunk_text(
-                        doc_stem=p.stem,
-                        text=str(seg.get("text") or ""),
-                        source_doc=p.name,
-                        modality=str(seg.get("modality") or "text"),
-                        asset_ref=seg.get("asset_ref"),
-                        chunk_index_seed=seed,
-                        table_html_ref=str(seg.get("table_html") or "") or None,
-                        formula_latex_ref=str(seg.get("formula_latex") or "") or None,
-                        image_b64_ref=str(seg.get("image_b64_ref") or "") or None,
-                    )
+                seg_chunks = self._chunk_text(
+                    doc_stem=p.stem,
+                    text=str(seg.get("text") or ""),
+                    source_doc=p.name,
+                    modality=str(seg.get("modality") or "text"),
+                    asset_ref=seg.get("asset_ref"),
+                    chunk_index_seed=seed,
+                    table_html_ref=str(seg.get("table_html") or "") or None,
+                    formula_latex_ref=str(seg.get("formula_latex") or "") or None,
+                    image_b64_ref=str(seg.get("image_b64_ref") or "") or None,
                 )
-                seed += 1
+                chunks.extend(seg_chunks)
+                seed += len(seg_chunks)
             return chunks
 
         try:
