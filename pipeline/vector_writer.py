@@ -18,7 +18,7 @@ _TOKEN_RE = re.compile(r"[A-Za-z0-9_가-힣]+")
 
 
 class VectorWriter:
-    def __init__(self, host: str = "localhost", port: int = 6333, collection: str = "smartfarm_chunks_v2") -> None:
+    def __init__(self, host: str = "localhost", port: int = 6333, collection: str = "smartfarm_chunks") -> None:
         self.base = f"http://{host}:{port}"
         self.collection = collection
         self.vector_size = int(os.getenv("EMBED_DIM", "512"))

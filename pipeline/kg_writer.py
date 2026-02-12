@@ -9,7 +9,7 @@ except Exception:  # pragma: no cover
 
 
 class KGWriter:
-    def __init__(self, host: str = "localhost", port: int = 6379, graph: str = "smartfarm_v2") -> None:
+    def __init__(self, host: str = "localhost", port: int = 6379, graph: str = "smartfarm") -> None:
         self.graph = graph
         self.client = None
         if redis is not None:

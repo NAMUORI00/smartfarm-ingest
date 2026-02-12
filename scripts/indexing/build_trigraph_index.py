@@ -7,7 +7,7 @@ References (conceptual inspiration; **clean-room implementation**):
   - LinearRAG GitHub (GPL-3.0; do not copy code into this repo — logic-only adoption):
     https://github.com/DEEP-PolyU/LinearRAG
 
-This v2 indexer produces a *single, consistent* chunk-level corpus that is shared by:
+This indexer produces a *single, consistent* chunk-level corpus that is shared by:
   1) Dense index (FAISS)
   2) Sparse index (BM25)
   3) Tri-Graph artifacts (Entity–Sentence–Chunk) for multi-hop retrieval
@@ -18,7 +18,7 @@ Design goals:
   - Edge-friendly artifacts (memory-mappable .npy + compact json/npz)
 
 Typical usage (from workspace root):
-  python smartfarm-ingest/scripts/indexing/build_trigraph_index_v2.py \
+  python smartfarm-ingest/scripts/indexing/build_trigraph_index.py \
     --input-jsonl smartfarm-ingest/output/wasabi_en_ko_parallel.jsonl \
     --lang ko \
     --embed-model-id minilm
@@ -184,11 +184,11 @@ class TriGraphMeta:
     n_entities: int
     chunk_size: int
     chunk_stride: int
-    version: str = "trigraph-v2"
+    version: str = "trigraph"
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Build Tri-Graph RAG indices (v2, LLM-free).")
+    ap = argparse.ArgumentParser(description="Build Tri-Graph RAG indices (LLM-free).")
     ap.add_argument("--input-jsonl", required=True, type=Path, help="Corpus JSONL (id + text_* fields)")
     ap.add_argument("--lang", default="ko", choices=["ko", "en", "both"], help="Language field preference")
     ap.add_argument("--limit", type=int, default=None, help="Optional doc limit for quick iteration")
@@ -489,7 +489,7 @@ def main() -> int:
         trigraph_dir.rename(old)
     tmp_trigraph_dir.rename(trigraph_dir)
 
-    print("[trigraph-v2] DONE")
+    print("[trigraph] DONE")
     print(f"  corpus={corpus_path} docs={n_docs}")
     print(f"  chunks={n_chunks} sentences={n_sentences} entities={n_entities}")
     print(f"  dense={dense_index_path}")

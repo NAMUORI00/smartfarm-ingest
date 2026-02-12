@@ -37,7 +37,7 @@
 
 ## 빠른 시작
 
-### v2 Public Artifact Build (Docling + Kimi + Qdrant/FalkorDB)
+### Public Artifact Build (Docling + Kimi + Qdrant/FalkorDB)
 
 ```bash
 cd smartfarm-ingest
@@ -52,7 +52,7 @@ python -m pipeline.public_ingest_runner \
 - Kimi 추출 결과는 스키마 검증 후 반영
 - 결과는 Qdrant(벡터) + FalkorDB(KG)에 public tier로 적재
 
-### v2 Reproducibility Check (Offline Ingest Manifest)
+### Reproducibility Check (Offline Ingest Manifest)
 
 ```bash
 cd smartfarm-ingest
