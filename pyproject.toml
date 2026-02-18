@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smartfarm-ingest"
+version = "0.1.0"
+description = "ERA-SmartFarm offline ingest pipeline"
+requires-python = ">=3.12"
+
+[project.scripts]
+public-ingest = "pipeline.public_ingest_runner:main"
+artifact-export = "pipeline.artifact_export:main"
+artifact-import = "pipeline.artifact_import:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pipeline*"]

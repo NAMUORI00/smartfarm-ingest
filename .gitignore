@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.eggs/
+dist/
+build/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Secrets (민감 정보 - 절대 커밋 금지)
+config/secrets.yaml
+secrets.yaml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Output
+output/
+*.jsonl
+*.log
+
+# Cache
+.cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ChromaDB
+chroma_db/
+
+# Backup files
+*.backup
+*.bak
+
+# Temporary files
+nul
+*.tmp
+
+# Generated validation reports (keep templates only)
+output/validation_report.*
+output/test_validation_report.*
