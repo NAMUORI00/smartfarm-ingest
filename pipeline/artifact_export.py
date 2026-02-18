@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List
 
+from pipeline.env_contract import DEFAULT_EMBED_MODEL
+
 
 def _sha256(path: Path) -> str:
     h = hashlib.sha256()
@@ -85,7 +87,7 @@ def main() -> int:
     p.add_argument("--qdrant-dir", default="data/index/qdrant")
     p.add_argument("--falkordb-dir", default="data/index/falkordb")
     p.add_argument("--output-dir", default="data/index/export")
-    p.add_argument("--model-id", default="Qwen/Qwen3-VL-Embedding-2B")
+    p.add_argument("--model-id", default=DEFAULT_EMBED_MODEL)
     p.add_argument("--graph-name", default="smartfarm")
     args = p.parse_args()
 

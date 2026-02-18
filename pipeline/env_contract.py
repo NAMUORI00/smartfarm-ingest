@@ -47,8 +47,8 @@ PROJECT_ENV_PREFIXES = (
     "SENSOR_",
 )
 
-DEFAULT_OPENAI_MODEL = "Qwen/Qwen3-4B"
-DEFAULT_EMBED_MODEL = "Qwen/Qwen3-VL-Embedding-2B"
+DEFAULT_OPENAI_MODEL = "openai/gpt-oss-120b"
+DEFAULT_EMBED_MODEL = "sentence-transformers/distiluse-base-multilingual-cased-v2"
 DEFAULT_EMBED_DIM = 512
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_BATCH_SIZE = 8

@@ -49,4 +49,4 @@ artifact-import --help
 - `OPENAI_COMPAT_BASE_URL`, `OPENAI_COMPAT_API_KEY`, `OPENAI_COMPAT_MODEL`
 - `JUDGE_RUNTIME=api|self_host`
 - `RAGAS_BASE_URL`, `RAGAS_API_KEY`
-- `HF_TOKEN`
+- `HF_TOKEN` (임베딩은 Hugging Face Inference API `feature_extraction` 고정 사용)

@@ -21,7 +21,7 @@ def test_artifact_import_roundtrip(tmp_path: Path) -> None:
         qdrant_dir=src_qdrant,
         falkordb_dir=src_falkor,
         output_dir=manifest_dir,
-        model_id="Qwen/Qwen3-VL-Embedding-2B",
+        model_id="sentence-transformers/distiluse-base-multilingual-cased-v2",
         graph_name="smartfarm",
     )
 
@@ -55,7 +55,7 @@ def test_artifact_import_detects_sha_mismatch(tmp_path: Path) -> None:
         qdrant_dir=src_qdrant,
         falkordb_dir=src_falkor,
         output_dir=tmp_path / "manifest",
-        model_id="Qwen/Qwen3-VL-Embedding-2B",
+        model_id="sentence-transformers/distiluse-base-multilingual-cased-v2",
         graph_name="smartfarm",
     )
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
