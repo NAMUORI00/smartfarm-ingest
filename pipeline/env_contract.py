@@ -48,8 +48,10 @@ PROJECT_ENV_PREFIXES = (
 )
 
 DEFAULT_OPENAI_MODEL = "openai/gpt-oss-120b"
-DEFAULT_EMBED_MODEL = "sentence-transformers/distiluse-base-multilingual-cased-v2"
-DEFAULT_EMBED_DIM = 512
+# Source: BAAI/bge-m3 model card (MIT, multilingual retrieval, HF Inference enabled)
+# https://huggingface.co/BAAI/bge-m3
+DEFAULT_EMBED_MODEL = "BAAI/bge-m3"
+DEFAULT_EMBED_DIM = 1024
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_BATCH_SIZE = 8
 DEFAULT_MAX_RETRIES = 2
