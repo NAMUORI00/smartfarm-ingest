@@ -50,3 +50,8 @@ artifact-import --help
 - `JUDGE_RUNTIME=api|self_host`
 - `RAGAS_BASE_URL`, `RAGAS_API_KEY`
 - `HF_TOKEN` (임베딩은 Hugging Face Inference API `feature_extraction` 고정 사용)
+
+## Migration Note (Canonical IDs)
+- Qdrant payload는 이제 모든 포인트에 `canonical_doc_id`, `canonical_chunk_id`, `doc_id`, `chunk_id`를 포함합니다.
+- 기존 인덱스에는 새 canonical payload 키가 없으므로, **backfill을 위해 reingest/reindex가 필요**합니다.
+- 검색/벤치마킹은 기존 필드와 함께 동작하도록 **backward compatible**하지만, reindex 이후 문서/청크 기준 metric 정확도가 더 높아집니다.

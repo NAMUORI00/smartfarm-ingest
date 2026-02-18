@@ -58,6 +58,30 @@ class VectorWriter:
             raise RuntimeError(f"embedding dim mismatch: expected={self.vector_size} got={len(vec)}")
         return vec
 
+    def _normalize_canonical_ids(self, *, chunk_id: str, payload: Dict[str, Any]) -> Dict[str, str]:
+        raw_chunk_id = str(chunk_id or "").strip()
+        payload_chunk_id = str(payload.get("chunk_id") or "").strip()
+        canonical_chunk_id = str(payload.get("canonical_chunk_id") or "").strip() or payload_chunk_id or raw_chunk_id
+
+        canonical_doc_id = (
+            str(payload.get("canonical_doc_id") or "").strip()
+            or str(payload.get("source_doc_id") or "").strip()
+            or str(payload.get("source_doc") or "").strip()
+            or str(payload.get("doc_id") or "").strip()
+        )
+        if not canonical_doc_id:
+            inferred_from_chunk = canonical_chunk_id.split("#", 1)[0].strip() if "#" in canonical_chunk_id else canonical_chunk_id
+            canonical_doc_id = inferred_from_chunk or raw_chunk_id
+
+        doc_id = str(payload.get("doc_id") or "").strip() or canonical_doc_id
+        final_chunk_id = payload_chunk_id or raw_chunk_id or canonical_chunk_id
+        return {
+            "canonical_doc_id": str(canonical_doc_id),
+            "canonical_chunk_id": str(canonical_chunk_id),
+            "doc_id": str(doc_id),
+            "chunk_id": str(final_chunk_id),
+        }
+
     def ensure_collection(self) -> None:
         if self.client is None or models is None:
             return
@@ -84,6 +108,8 @@ class VectorWriter:
         self.ensure_collection()
 
         point_payload = dict(payload or {})
+        id_fields = self._normalize_canonical_ids(chunk_id=chunk_id, payload=point_payload)
+        point_payload.update(id_fields)
         modality = str(point_payload.get("modality") or "text").strip().lower()
         asset_ref = str(point_payload.get("asset_ref") or "").strip()
         point_payload["text"] = text
@@ -105,7 +131,7 @@ class VectorWriter:
         )
 
         point = models.PointStruct(
-            id=str(chunk_id),
+            id=id_fields["chunk_id"] or str(chunk_id),
             vector={
                 "dense_text": dense_text,
                 "dense_image": dense_image,

@@ -53,10 +53,16 @@ def run_public_ingest(
         chunks = parser.parse_file(file_path)
         for ch in chunks:
             created_at = str(ch.metadata.get("created_at") or "").strip() or _utc_now_iso()
+            source_doc_id = str(ch.metadata.get("source_doc") or file_path.name).strip() or str(file_path.name)
             payload = {
                 "tier": "public",
                 "source_type": "document",
-                "source_doc": str(file_path.name),
+                "source_doc": source_doc_id,
+                "source_doc_id": source_doc_id,
+                "doc_id": source_doc_id,
+                "chunk_id": str(ch.chunk_id),
+                "canonical_doc_id": source_doc_id,
+                "canonical_chunk_id": str(ch.chunk_id),
                 "modality": ch.metadata.get("modality", "text"),
                 "asset_ref": ch.metadata.get("asset_ref"),
                 "table_html_ref": ch.metadata.get("table_html_ref"),

@@ -168,6 +168,10 @@ def test_run_public_ingest_smoke_with_injected_components(tmp_path: Path) -> Non
     assert rc == 0
     assert len(vectors.calls) == 1
     assert vectors.calls[0][2]["table_html_ref"]
+    assert vectors.calls[0][2]["canonical_doc_id"] == "doc.txt"
+    assert vectors.calls[0][2]["canonical_chunk_id"] == "doc#c0"
+    assert vectors.calls[0][2]["doc_id"] == "doc.txt"
+    assert vectors.calls[0][2]["chunk_id"] == "doc#c0"
     assert len(kg.chunk_calls) == 1
     assert len(kg.entity_calls) == 1
     assert len(kg.relation_calls) == 1
