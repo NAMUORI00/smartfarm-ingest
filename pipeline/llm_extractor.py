@@ -12,8 +12,10 @@ except Exception:  # pragma: no cover
 
 from pipeline.env_contract import DEFAULT_OPENAI_MODEL, resolve_openai_compat_runtime
 
-_ALLOWED_ENTITY_TYPES = {"Crop", "Disease", "Pest", "Environment", "Practice", "Condition", "Category"}
-_ALLOWED_REL_TYPES = {"CAUSES", "TREATED_BY", "REQUIRES", "SUSCEPTIBLE_TO", "AFFECTS", "MENTIONS", "PART_OF"}
+from pipeline.ontology import ALLOWED_ENTITY_LABELS as _ALLOWED_ENTITY_TYPES
+from pipeline.ontology import ALLOWED_RELATION_TYPES as _ALLOWED_REL_TYPES
+from pipeline.ontology import ALLOWED_ENTITY_LABELS_CSV as _ENTITY_CSV
+from pipeline.ontology import ALLOWED_RELATION_TYPES_CSV as _REL_CSV
 _CID_RE = re.compile(r"^[a-z0-9_\-:.]{3,120}$")
 _JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*\})\s*```", re.IGNORECASE | re.DOTALL)
 
@@ -199,8 +201,8 @@ class LLMExtractor:
         return (
             "You are an agriculture knowledge extractor. "
             "Return ONLY JSON with keys: entities, relations. "
-            "Allowed entity types: Crop, Disease, Pest, Environment, Practice, Condition, Category. "
-            "Allowed relation types: CAUSES, TREATED_BY, REQUIRES, SUSCEPTIBLE_TO, AFFECTS, MENTIONS, PART_OF. "
+            f"Allowed entity types: {_ENTITY_CSV}. "
+            f"Allowed relation types: {_REL_CSV}. "
             "Entity fields: text,type,canonical_id,confidence,scientific_name,aliases,symptom_keywords,growth_stage,metric,unit. "
             "Relation fields: source,target,type,confidence,evidence. "
             f"Focus on {focus} evidence when present.\n\n"

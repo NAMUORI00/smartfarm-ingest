@@ -9,7 +9,7 @@ try:
 except Exception:  # pragma: no cover
     redis = None  # type: ignore[assignment]
 
-_ALLOWED_ENTITY_LABELS = {"Crop", "Disease", "Pest", "Environment", "Practice", "Condition", "Category"}
+from pipeline.ontology import ALLOWED_ENTITY_LABELS as _ALLOWED_ENTITY_LABELS
 _REL_TYPE_SANITIZER = re.compile(r"[^A-Z_]")
 _CANONICAL_SANITIZER = re.compile(r"[^a-z0-9_\-:.]+")
 

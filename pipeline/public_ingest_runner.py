@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, TYPE_CHECKING
+from typing import Iterable, List, Set, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pipeline.document_parser import DocumentParser
@@ -48,6 +48,11 @@ def run_public_ingest(
     total_chunks = 0
     total_entities = 0
     total_relations = 0
+
+    # ── ontology observation accumulators ─────────────────────────────
+    observed_entity_types: Set[str] = set()
+    observed_relation_types: Set[str] = set()
+    chunk_texts: List[str] = []
 
     for file_path in iter_input_files(input_dir):
         chunks = parser.parse_file(file_path)
@@ -127,6 +132,33 @@ def run_public_ingest(
             total_chunks += 1
             total_entities += len(entities)
             total_relations += len(relations_typed)
+
+            # ── accumulate ontology observations ─────────────────────
+            chunk_texts.append(ch.text)
+            for e in entities:
+                etype = str(e.get("type") or "").strip()
+                if etype:
+                    observed_entity_types.add(etype)
+            for r in relations_typed:
+                rtype = str(r.get("type") or "").strip().upper()
+                if rtype:
+                    observed_relation_types.add(rtype)
+
+    # ── Phase: auto-generate domain_ontology.json ────────────────────
+    from pipeline.ontology_builder import build_ontology_from_extractions
+
+    ontology = build_ontology_from_extractions(
+        observed_entity_types=observed_entity_types,
+        observed_relation_types=observed_relation_types,
+        chunk_texts=chunk_texts,
+    )
+    print(
+        f"[ontology-build] generated domain_ontology.json "
+        f"(entities={len(ontology.get('allowed_entity_labels', []))} "
+        f"relations={len(ontology.get('allowed_relation_types', []))} "
+        f"keywords_ko={len((ontology.get('relation_hint_tokens') or {}).get('ko', []))} "
+        f"keywords_en={len((ontology.get('relation_hint_tokens') or {}).get('en', []))})"
+    )
 
     print(
         f"[public-ingest] done chunks={total_chunks} entities={total_entities} relations={total_relations}"
