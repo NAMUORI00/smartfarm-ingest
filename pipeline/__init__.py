@@ -4,7 +4,6 @@ __all__ = [
     "ParsedChunk",
     "KGWriter",
     "LLMExtractor",
-    "MultiLLMExtractor",
     "ExtractionInput",
     "VectorWriter",
 ]
@@ -23,12 +22,11 @@ def __getattr__(name: str):
         from .kg_writer import KGWriter
 
         return KGWriter
-    if name in {"LLMExtractor", "MultiLLMExtractor", "ExtractionInput"}:
-        from .llm_extractor import ExtractionInput, LLMExtractor, MultiLLMExtractor
+    if name in {"LLMExtractor", "ExtractionInput"}:
+        from .llm_extractor import ExtractionInput, LLMExtractor
 
         return {
             "LLMExtractor": LLMExtractor,
-            "MultiLLMExtractor": MultiLLMExtractor,
             "ExtractionInput": ExtractionInput,
         }[name]
     if name == "VectorWriter":

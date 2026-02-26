@@ -276,6 +276,3 @@ class LLMExtractor:
         relations = self._validate_relations(rels_raw)
         return {"entities": entities, "relations": relations}
 
-
-# Backward-compatible neutral alias.
-MultiLLMExtractor = LLMExtractor

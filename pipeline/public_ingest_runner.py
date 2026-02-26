@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Iterable, List, Set, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pipeline.document_parser import DocumentParser
+    from pipeline.docling_parser import DoclingParser
     from pipeline.kg_writer import KGWriter
     from pipeline.llm_extractor import LLMExtractor
     from pipeline.vector_writer import VectorWriter
@@ -30,17 +30,17 @@ def run_public_ingest(
     qdrant_port: int,
     falkor_host: str,
     falkor_port: int,
-    parser: DocumentParser | None = None,
+    parser: DoclingParser | None = None,
     extractor: LLMExtractor | None = None,
     vectors: VectorWriter | None = None,
     kg: KGWriter | None = None,
 ) -> int:
-    from pipeline.document_parser import DocumentParser
+    from pipeline.docling_parser import DoclingParser
     from pipeline.kg_writer import KGWriter
     from pipeline.llm_extractor import LLMExtractor
     from pipeline.vector_writer import VectorWriter
 
-    parser = parser or DocumentParser()
+    parser = parser or DoclingParser()
     extractor = extractor or LLMExtractor()
     vectors = vectors or VectorWriter(host=qdrant_host, port=qdrant_port)
     kg = kg or KGWriter(host=falkor_host, port=falkor_port)
